@@ -30,6 +30,7 @@ app.use(
     secret: "lols",
     resave: false,
     saveUninitialized: true,
+    cookie: { maxAge: 1800000 },
   })
 );
 
@@ -100,6 +101,15 @@ app.get("/usermounted", (req, res) => {
     // User is not authenticated, send appropriate response
     res.status(401).json({ message: "User not authenticated" });
   }
+});
+
+app.get("/logout", function (req, res, next) {
+  req.logout(function (err) {
+    if (err) {
+      return next(err);
+    }
+    res.redirect("http://localhost:5173");
+  });
 });
 
 app.listen(5000, () => {
