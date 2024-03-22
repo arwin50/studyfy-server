@@ -5,16 +5,20 @@ import session from "express-session";
 import passport from "passport";
 import GoogleAuth from "passport-google-oauth20";
 import { User } from "./models/user.js";
+import { Post } from "./models/post.js";
+import { Comment } from "./models/comment.js";
+
 const GoogleStrategy = GoogleAuth.Strategy;
 import * as dotenv from "dotenv";
 dotenv.config();
+const dbUrl = process.env.MONGO_DB_API_KEY;
 
 main()
   .then(() => console.log("Connected to the Database"))
   .catch((err) => console.log("OHNO ERROR!", err));
 
 async function main() {
-  await mongoose.connect("mongodb://localhost:27017/studyfy");
+  await mongoose.connect(dbUrl);
 }
 
 const app = express();
@@ -23,7 +27,7 @@ const corsOptions = {
   credentials: true,
   optionSuccessStatus: 200,
 };
-
+app.use(express.json());
 app.use(cors(corsOptions));
 app.use(
   session({
@@ -73,6 +77,38 @@ passport.serializeUser((user, done) => {
 
 passport.deserializeUser((user, done) => {
   done(null, user);
+});
+
+app.get("/", async (req, res) => {
+  try {
+    const posts = await Post.find({}).populate("author").populate("comments");
+    res.json(posts);
+  } catch (error) {
+    console.error("Error fetching posts:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+app.post("/", async (req, res) => {
+  try {
+    const { authorId, body, comments } = req.body;
+    const author = await User.findById(authorId);
+    const newPost = new Post({
+      author,
+      body,
+      comments,
+    });
+
+    await newPost.save();
+    await User.findByIdAndUpdate(author._id, { $push: { posts: newPost._id } });
+
+    res
+      .status(201)
+      .json({ message: "Post created successfully", post: newPost });
+  } catch (error) {
+    console.error("Error creating post:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
 });
 
 app.get(

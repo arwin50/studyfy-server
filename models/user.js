@@ -7,6 +7,12 @@ const userSchema = new Schema(
     displayName: String,
     email: String,
     image: String,
+    posts: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "Posts",
+      },
+    ],
   },
   { timestamps: true }
 );
