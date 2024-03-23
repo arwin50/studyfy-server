@@ -89,6 +89,20 @@ app.get("/", async (req, res) => {
   }
 });
 
+app.get("/question/:questionId", async (req, res) => {
+  console.log("amen");
+  try {
+    const postId = req.params.questionId;
+    const post = await Post.findById(postId)
+      .populate("author")
+      .populate("comments");
+    console.log(post);
+    res.json(post);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.post("/", async (req, res) => {
   try {
     const { authorId, body, comments } = req.body;
