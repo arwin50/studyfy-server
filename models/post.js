@@ -14,6 +14,10 @@ const postSchema = new Schema(
         ref: "Comments",
       },
     ],
+    subject: {
+      type: Schema.Types.ObjectId,
+      ref: "Subjects",
+    },
   },
   { timestamps: true }
 );
