@@ -11,6 +11,7 @@ import { Comment } from "./models/comment.js";
 const GoogleStrategy = GoogleAuth.Strategy;
 import * as dotenv from "dotenv";
 import { isLoggedIn } from "./middleware.js";
+import e from "express";
 dotenv.config();
 const dbUrl = process.env.MONGO_DB_API_KEY;
 
@@ -98,7 +99,6 @@ app.get("/", async (req, res) => {
 });
 
 app.get("/question/:questionId", async (req, res) => {
-  console.log("amen");
   try {
     const postId = req.params.questionId;
     const post = await Post.findById(postId)
@@ -125,6 +125,52 @@ app.get("/question/:questionId", async (req, res) => {
     res.json(populatedPost);
   } catch (error) {
     res.status(500).json({ error: error.message });
+  }
+});
+
+app.delete("/question/:questionId", async (req, res) => {
+  try {
+    const postId = req.params.questionId;
+
+    await Post.findByIdAndDelete(postId);
+    await Comment.deleteMany({ postId: postId });
+    await User.updateMany({}, { $pull: { posts: postId } });
+
+    res.status(200).json({ message: "Post deleted successfully" });
+  } catch (error) {
+    console.error("Error deleting post:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+app.put("/question/:questionId", async (req, res) => {
+  try {
+    const postId = req.params.questionId;
+    const { body, authorId } = req.body;
+
+    const post = await Post.findById(postId).populate("author");
+
+    if (post) {
+      if (post.author._id != authorId) {
+        console.log(post.author._id);
+        return res
+          .status(403)
+          .json({ error: "You are not authorized to update this post" });
+      }
+
+      console.log("hello", post);
+      post.body = body;
+      const updatedPost = await post.save();
+
+      res
+        .status(200)
+        .json({ message: "Post updated successfully", post: updatedPost });
+    } else {
+      res.status(500).json({ message: "Post not found" });
+    }
+  } catch (error) {
+    console.error("Error updating post:", error);
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 
