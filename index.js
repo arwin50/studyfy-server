@@ -143,7 +143,7 @@ app.post("/comments", async (req, res) => {
     const { postId, author, body } = req.body;
 
     const post = await Post.findById(postId);
-    const user = await User.findById((author)).populate('comments.author');
+    const user = await User.findById((author));
 
     const newComment = new Comment({
       postId: post,
