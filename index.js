@@ -97,8 +97,21 @@ app.get("/question/:questionId", async (req, res) => {
     const post = await Post.findById(postId)
       .populate("author")
       .populate("comments");
-    console.log(post);
-    res.json(post);
+
+    const populatedComments = await Promise.all(post.comments.map(async (comment) => {
+      const populatedComment = await Comment.findById(comment._id).populate("author");
+      return populatedComment;
+    }));
+    
+    const populatedPost = {
+      _id: post._id,
+      author: post.author,
+      body: post.body,
+      comments: populatedComments
+    }
+
+    console.log(populatedPost);
+    res.json(populatedPost);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -121,6 +134,34 @@ app.post("/", async (req, res) => {
     res
       .status(201)
       .json({ message: "Post created successfully", post: newPost });
+  } catch (error) {
+    console.error("Error creating post:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+app.post("/comments", async (req, res) => {
+  try {
+    const { postId, author, body } = req.body;
+
+    const post = await Post.findById(postId);
+    const user = await User.findById((author));
+
+    const newComment = new Comment({
+      postId: post,
+      author: user,
+      body
+    });
+
+    console.log('data posted whatchuneed', newComment)
+
+    await newComment.save();
+    await Post.findByIdAndUpdate(postId, { $push: { comments: newComment._id } });
+
+    res
+      .status(201)
+      .json({ message: "Post created successfully", comment: newComment });
+
   } catch (error) {
     console.error("Error creating post:", error);
     res.status(500).json({ error: "Internal server error" });
