@@ -10,6 +10,7 @@ import { Comment } from "./models/comment.js";
 
 const GoogleStrategy = GoogleAuth.Strategy;
 import * as dotenv from "dotenv";
+import { isLoggedIn } from "./middleware.js";
 dotenv.config();
 const dbUrl = process.env.MONGO_DB_API_KEY;
 
@@ -104,6 +105,7 @@ app.get("/question/:questionId", async (req, res) => {
 });
 
 app.post("/", async (req, res) => {
+  console.log("amen");
   try {
     const { authorId, body, comments } = req.body;
     const author = await User.findById(authorId);
