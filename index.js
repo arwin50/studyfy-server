@@ -128,8 +128,7 @@ app.get("/question/:questionId", async (req, res) => {
   }
 });
 
-app.post("/", async (req, res) => {
-  console.log("amen");
+app.post("/", isLoggedIn, async (req, res) => {
   try {
     const { authorId, body, comments } = req.body;
     const author = await User.findById(authorId);
@@ -151,7 +150,7 @@ app.post("/", async (req, res) => {
   }
 });
 
-app.post("/comments", async (req, res) => {
+app.post("/comments", isLoggedIn, async (req, res) => {
   try {
     const { postId, author, body } = req.body;
 
