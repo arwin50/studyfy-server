@@ -101,7 +101,28 @@ app.get("/", async (req, res) => {
   }
 });
 
-app.get("/question/:questionId", async (req, res) => {
+app.get("/:category/question", async (req, res) => {
+  const category = req.params.category;
+  console.log(category);
+  try {
+    const subject = await Subject.findOne({ subjectTitle: category }).populate({
+      path: "posts",
+      populate: [{ path: "author" }, { path: "comments" }, { path: "subject" }],
+    });
+
+    if (subject) {
+      res.json(subject.posts);
+    } else {
+      console.log("no posts yet");
+      res.status(200);
+    }
+  } catch (error) {
+    console.error("Error fetching posts:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+app.get("/:category/question/:questionId", async (req, res) => {
   try {
     const postId = req.params.questionId;
     const post = await Post.findById(postId)
@@ -120,7 +141,7 @@ app.get("/question/:questionId", async (req, res) => {
   }
 });
 
-app.delete("/question/:questionId", async (req, res) => {
+app.delete("/:category/question/:questionId", async (req, res) => {
   try {
     const postId = req.params.questionId;
 
@@ -136,7 +157,7 @@ app.delete("/question/:questionId", async (req, res) => {
   }
 });
 
-app.put("/question/:questionId", async (req, res) => {
+app.put("/:category/question/:questionId", async (req, res) => {
   try {
     const postId = req.params.questionId;
     const { body, authorId } = req.body;
