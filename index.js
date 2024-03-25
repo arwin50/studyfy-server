@@ -107,7 +107,14 @@ app.get("/:category/question", async (req, res) => {
   try {
     const subject = await Subject.findOne({ subjectTitle: category }).populate({
       path: "posts",
-      populate: [{ path: "author" }, { path: "comments" }, { path: "subject" }],
+      populate: [
+        { path: "author" },
+        {
+          path: "comments",
+          populate: { path: "author" },
+        },
+        { path: "subject" },
+      ],
     });
 
     if (subject) {
@@ -271,13 +278,27 @@ app.get(
   }
 );
 
-app.get("/usermounted", (req, res) => {
-  // Check if user is authenticated
+app.get("/usermounted", async (req, res) => {
   if (req.isAuthenticated()) {
-    // User is authenticated, send back user data
-    res.json(req.user);
+    try {
+      const user = await User.findById(req.user._id).populate({
+        path: "posts",
+        populate: [
+          { path: "author" },
+          {
+            path: "comments",
+            populate: { path: "author" },
+          },
+          { path: "subject" },
+        ],
+      });
+      console.log("user", user);
+      res.json(user);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: "Internal server error" });
+    }
   } else {
-    // User is not authenticated, send appropriate response
     res.status(401).json({ message: "User not authenticated" });
   }
 });
