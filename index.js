@@ -232,9 +232,10 @@ app.post("/", async (req, res) => {
   }
 });
 
-app.post("/comments", async (req, res) => {
+app.post("/:category/question/:questionId/comments", async (req, res) => {
   try {
-    const { postId, author, body } = req.body;
+    const { author, body } = req.body;
+    const postId = req.params.questionId;
 
     const post = await Post.findById(postId);
     const user = await User.findById(author);
