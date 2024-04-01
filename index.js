@@ -5,14 +5,13 @@ import session from "express-session";
 import passport from "passport";
 import GoogleAuth from "passport-google-oauth20";
 import { User } from "./models/user.js";
-import { Post } from "./models/post.js";
-import { Comment } from "./models/comment.js";
+import postRoutes from "./routes/posts.js";
+import questionRoutes from "./routes/questions.js";
+import userRoutes from "./routes/users.js";
 
 const GoogleStrategy = GoogleAuth.Strategy;
 import * as dotenv from "dotenv";
-import { isLoggedIn } from "./middleware.js";
 
-import { Subject } from "./models/subjects.js";
 dotenv.config();
 const dbUrl = process.env.MONGO_DB_API_KEY;
 
@@ -82,185 +81,8 @@ passport.deserializeUser((user, done) => {
   done(null, user);
 });
 
-app.get("/", async (req, res) => {
-  try {
-    const posts = await Post.find({})
-      .populate("author")
-      .populate("subject")
-      .populate({
-        path: "comments",
-        populate: {
-          path: "author",
-        },
-      });
-    console.log(posts);
-    res.json(posts);
-  } catch (error) {
-    console.error("Error fetching posts:", error);
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
-
-app.get("/:category/question", async (req, res) => {
-  const category = req.params.category;
-  console.log(category);
-  try {
-    const subject = await Subject.findOne({ subjectTitle: category }).populate({
-      path: "posts",
-      populate: [
-        { path: "author" },
-        {
-          path: "comments",
-          populate: { path: "author" },
-        },
-        { path: "subject" },
-      ],
-    });
-
-    if (subject) {
-      res.json(subject.posts);
-    } else {
-      console.log("no posts yet");
-      res.status(200);
-    }
-  } catch (error) {
-    console.error("Error fetching posts:", error);
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
-
-app.get("/:category/question/:questionId", async (req, res) => {
-  try {
-    const postId = req.params.questionId;
-    const post = await Post.findById(postId)
-      .populate("author")
-      .populate("subject")
-      .populate({
-        path: "comments",
-        populate: {
-          path: "author",
-        },
-      });
-
-    res.json(post);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-app.delete("/:category/question/:questionId", async (req, res) => {
-  try {
-    const postId = req.params.questionId;
-
-    await Post.findByIdAndDelete(postId);
-    await Comment.deleteMany({ postId: postId });
-    await User.updateMany({}, { $pull: { posts: postId } });
-    await Subject.updateMany({}, { $pull: { posts: postId } });
-
-    res.status(200).json({ message: "Post deleted successfully" });
-  } catch (error) {
-    console.error("Error deleting post:", error);
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
-
-app.put("/:category/question/:questionId", async (req, res) => {
-  try {
-    const postId = req.params.questionId;
-    const { body, authorId } = req.body;
-
-    const post = await Post.findById(postId).populate("author");
-
-    if (post) {
-      if (post.author._id != authorId) {
-        console.log(post.author._id);
-        return res
-          .status(403)
-          .json({ error: "You are not authorized to update this post" });
-      }
-
-      console.log("hello", post);
-      post.body = body;
-      const updatedPost = await post.save();
-
-      res
-        .status(200)
-        .json({ message: "Post updated successfully", post: updatedPost });
-    } else {
-      res.status(500).json({ message: "Post not found" });
-    }
-  } catch (error) {
-    console.error("Error updating post:", error);
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
-
-app.post("/", async (req, res) => {
-  try {
-    const { authorId, body, comments, subject } = req.body;
-    const author = await User.findById(authorId);
-
-    let subresponse = await Subject.findOne({ subjectTitle: subject });
-
-    if (!subresponse) {
-      subresponse = new Subject({
-        subjectTitle: subject,
-        posts: [],
-      });
-      await subresponse.save();
-    }
-
-    const newPost = new Post({
-      author,
-      body,
-      comments,
-      subject: subresponse._id,
-    });
-
-    await newPost.save();
-    await User.findByIdAndUpdate(author._id, { $push: { posts: newPost._id } });
-    await Subject.findByIdAndUpdate(subresponse._id, {
-      $push: { posts: newPost._id },
-    });
-
-    res
-      .status(201)
-      .json({ message: "Post created successfully", post: newPost });
-  } catch (error) {
-    console.error("Error creating post:", error);
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
-
-app.post("/:category/question/:questionId/comments", async (req, res) => {
-  try {
-    const { author, body } = req.body;
-    const postId = req.params.questionId;
-
-    const post = await Post.findById(postId);
-    const user = await User.findById(author);
-
-    const newComment = new Comment({
-      postId: post,
-      author: user,
-      body,
-    });
-
-    console.log("data posted whatchuneed", newComment);
-
-    await newComment.save();
-    await Post.findByIdAndUpdate(postId, {
-      $push: { comments: newComment._id },
-    });
-
-    res
-      .status(201)
-      .json({ message: "Post created successfully", comment: newComment });
-  } catch (error) {
-    console.error("Error creating post:", error);
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
+app.use("/", postRoutes, userRoutes);
+app.use("/:category/question", questionRoutes);
 
 app.get(
   "/auth/google",
@@ -278,40 +100,6 @@ app.get(
     res.redirect("/");
   }
 );
-
-app.get("/usermounted", async (req, res) => {
-  if (req.isAuthenticated()) {
-    try {
-      const user = await User.findById(req.user._id).populate({
-        path: "posts",
-        populate: [
-          { path: "author" },
-          {
-            path: "comments",
-            populate: { path: "author" },
-          },
-          { path: "subject" },
-        ],
-      });
-      console.log("user", user);
-      res.json(user);
-    } catch (err) {
-      console.error(err);
-      res.status(500).json({ message: "Internal server error" });
-    }
-  } else {
-    res.status(401).json({ message: "User not authenticated" });
-  }
-});
-
-app.get("/logout", function (req, res, next) {
-  req.logout(function (err) {
-    if (err) {
-      return next(err);
-    }
-    res.redirect("http://localhost:5173");
-  });
-});
 
 app.listen(5000, () => {
   console.log("listening in 4000000000");

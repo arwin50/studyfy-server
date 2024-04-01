@@ -1,36 +1,8 @@
-import { Post } from "../models/post";
-import { Comment } from "../models/comment";
-import { Subject } from "../models/subjects";
-import { User } from "../models/user";
+import { Post } from "../models/post.js";
+import { Subject } from "../models/subjects.js";
+import { User } from "../models/user.js";
 
-export const postComment = async (req, res) => {
-  try {
-    const { postId, author, body } = req.body;
 
-    const post = await Post.findById(postId);
-    const user = await User.findById(author);
-
-    const newComment = new Comment({
-      postId: post,
-      author: user,
-      body,
-    });
-
-    console.log("data posted whatchuneed", newComment);
-
-    await newComment.save();
-    await Post.findByIdAndUpdate(postId, {
-      $push: { comments: newComment._id },
-    });
-
-    res
-      .status(201)
-      .json({ message: "Post created successfully", comment: newComment });
-  } catch (error) {
-    console.error("Error creating post:", error);
-    res.status(500).json({ error: "Internal server error" });
-  }
-};
 
 export const postPost = async (req, res) => {
   try {
