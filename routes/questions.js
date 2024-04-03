@@ -2,7 +2,7 @@ import express from "express";
 const router = express.Router();
 import * as questionController from "../controllers/question.js";
 
-router.route("/").get(questionController.getCategoryQuestion);
+
 router
   .route("/:questionId")
   .get(questionController.getQuestion)

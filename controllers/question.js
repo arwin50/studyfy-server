@@ -3,33 +3,6 @@ import { Comment } from "../models/comment.js";
 import { Subject } from "../models/subjects.js";
 import { User } from "../models/user.js";
 
-export const getCategoryQuestion = async (req, res) => {
-  const category = req.params.category;
-  console.log(category);
-  try {
-    const subject = await Subject.findOne({ subjectTitle: category }).populate({
-      path: "posts",
-      populate: [
-        { path: "author" },
-        {
-          path: "comments",
-          populate: { path: "author" },
-        },
-        { path: "subject" },
-      ],
-    });
-
-    if (subject) {
-      res.json(subject.posts);
-    } else {
-      console.log("no posts yet");
-      res.status(200);
-    }
-  } catch (error) {
-    console.error("Error fetching posts:", error);
-    res.status(500).json({ error: "Internal server error" });
-  }
-};
 
 export const getQuestion = async (req, res) => {
   try {
