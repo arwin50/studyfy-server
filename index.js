@@ -4,6 +4,7 @@ import cors from "cors";
 import session from "express-session";
 import passport from "passport";
 import { setupPassport } from "./auth/GoogleAuth.js";
+import { User } from "./models/user.js";
 import postRoutes from "./routes/posts.js";
 import questionRoutes from "./routes/questions.js";
 import userRoutes from "./routes/users.js";
