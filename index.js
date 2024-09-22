@@ -11,6 +11,9 @@ import userRoutes from "./routes/users.js";
 
 const GoogleStrategy = GoogleAuth.Strategy;
 import * as dotenv from "dotenv";
+import { Subject } from "./models/subjects.js";
+import { Post } from "./models/post.js";
+import { Comment } from "./models/comment.js";
 
 dotenv.config();
 const dbUrl = process.env.MONGO_DB_API_KEY;
@@ -42,6 +45,97 @@ app.use(
 
 app.use(passport.initialize());
 app.use(passport.session());
+
+app.delete("/comment/:commentId", async (req, res) => {
+  try {
+    const commentId = req.params.commentId;
+
+    await Post.updateMany({}, { $pull: { comments: commentId } });
+    await Comment.findByIdAndDelete( commentId );
+
+    res.status(200).json({ message: "Comment deleted successfully" });
+  } catch (error) {
+    console.error("Error deleting comment:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+app.get("/user/:userId", async (req, res) => {
+  try {
+    const userId = req.params.userId;
+    const user = await User.findById(userId)
+      .populate({
+        path: "posts",
+        populate: [ 
+        { path: "author"},
+        { path: "subject"}
+      ]});
+
+    res.json(user);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post("/comments", async (req, res) => {
+  try {
+    const { postId, author, body } = req.body;
+
+    const post = await Post.findById(postId);
+    const user = await User.findById(author);
+
+    const newComment = new Comment({
+      postId: post,
+      author: user,
+      body,
+    });
+
+    console.log("data posted whatchuneed", newComment);
+
+    await newComment.save();
+    await Post.findByIdAndUpdate(postId, {
+      $push: { comments: newComment._id },
+    });
+
+    res
+      .status(201)
+      .json({ message: "Post created successfully", comment: newComment });
+  } catch (error) {
+    console.error("Error creating post:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+app.put("/comment/:commentId", async (req, res) => {
+  try {
+    const commentId = req.params.commentId;
+    const { body, authorId } = req.body;
+
+    const comment = await Comment.findById(commentId).populate("author");
+
+    if (comment) {
+      if (comment.author._id != authorId) {
+        console.log(comment.author._id);
+        return res
+          .status(403)
+          .json({ error: "You are not authorized to update this post" });
+      }
+
+      console.log("hello", comment);
+      comment.body = body;
+      const updatedComment = await comment.save();
+
+      res
+        .status(200)
+        .json({ message: "Post updated successfully", post: updatedComment });
+    } else {
+      res.status(500).json({ message: "Post not found" });
+    }
+  } catch (error) {
+    console.error("Error updating post:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
 
 passport.use(
   new GoogleStrategy(
